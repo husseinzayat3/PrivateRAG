@@ -1,5 +1,11 @@
-import streamlit as st
 import os
+import warnings
+
+# Suppress HuggingFace and Google API warnings before anything else loads
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+warnings.filterwarnings("ignore", category=FutureWarning, module="google.*")
+
+import streamlit as st
 from ingest import ingest_local_files, ingest_gdrive, chunk_and_store
 from rag import answer_question
 from config import DATA_DIR, GDRIVE_CREDENTIALS_PATH
