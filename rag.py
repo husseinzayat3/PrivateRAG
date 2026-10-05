@@ -12,21 +12,28 @@ def get_retriever():
         persist_directory=CHROMA_DB_DIR,
         embedding_function=embeddings
     )
-    return vectorstore.as_retriever(search_kwargs={"k": 4})
+    return vectorstore.as_retriever(search_kwargs={"k": 6})
 
 def get_rag_chain():
     retriever = get_retriever()
     llm = OllamaLLM(model=OLLAMA_MODEL_NAME, base_url=OLLAMA_BASE_URL)
     
-    template = """Use the following pieces of retrieved context to answer the question. 
-If you don't know the answer, just say that you don't know. 
-Use three sentences maximum and keep the answer concise.
+    template = """You are a highly intelligent and helpful expert assistant. 
+Your task is to answer the user's question accurately and comprehensively based ONLY on the provided context below.
 
-Context: {context}
+Instructions:
+- Analyze the context carefully before answering.
+- Provide a detailed and well-structured response.
+- Use Markdown formatting (like bullet points, bold text, or code blocks) to make your answer easy to read.
+- If the context contains multiple perspectives or steps, synthesize them clearly.
+- If the answer is not contained in the context, politely state that you do not have enough information to answer, and do not make up facts.
+
+Context:
+{context}
 
 Question: {question}
 
-Answer:"""
+Expert Answer:"""
     prompt = PromptTemplate.from_template(template)
     
     def format_docs(docs):
