@@ -26,3 +26,9 @@ OLLAMA_BASE_URL = "http://localhost:11434"
 # Requires a credentials.json file in the root directory for OAuth
 GDRIVE_CREDENTIALS_PATH = os.path.join(BASE_DIR, "credentials.json")
 GDRIVE_TOKEN_PATH = os.path.join(BASE_DIR, "token.json")
+
+# WORKAROUND for a known bug in langchain-google-community
+# The GoogleDriveLoader checks if GOOGLE_APPLICATION_CREDENTIALS is NOT in the environment.
+# If it's missing, it tries to use default credentials and crashes with 'with_scopes'.
+# If it is present, it uses the credentials.json for the OAuth popup flow.
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GDRIVE_CREDENTIALS_PATH
