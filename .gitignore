@@ -28,7 +28,7 @@ data/
 *.pdf
 *.txt
 *.csv
-*.md
+
 
 # Editor / OS
 .DS_Store
