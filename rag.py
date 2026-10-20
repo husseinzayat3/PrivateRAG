@@ -1,19 +1,16 @@
-from config import CHROMA_DB_DIR, OLLAMA_MODEL_NAME, OLLAMA_BASE_URL, EMBEDDING_MODEL_NAME
-from langchain_chroma import Chroma
-from langchain_huggingface import HuggingFaceEmbeddings
+from functools import cache
+from config import OLLAMA_MODEL_NAME, OLLAMA_BASE_URL
+from vectorstore import get_vectorstore
 from langchain_ollama import OllamaLLM
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 
 def get_retriever():
-    embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_NAME)
-    vectorstore = Chroma(
-        persist_directory=CHROMA_DB_DIR,
-        embedding_function=embeddings
-    )
-    return vectorstore.as_retriever(search_kwargs={"k": 6})
+    return get_vectorstore().as_retriever(search_kwargs={"k": 6})
 
+# Cached so the chain (and the models behind it) is built once, not per question
+@cache
 def get_rag_chain():
     retriever = get_retriever()
     llm = OllamaLLM(model=OLLAMA_MODEL_NAME, base_url=OLLAMA_BASE_URL)

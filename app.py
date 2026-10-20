@@ -20,12 +20,20 @@ with st.sidebar:
     
     st.subheader("Local Files")
     uploaded_files = st.file_uploader("Upload files to local directory", accept_multiple_files=True)
-    if uploaded_files:
-        for uf in uploaded_files:
-            file_path = os.path.join(DATA_DIR, uf.name)
-            with open(file_path, "wb") as f:
-                f.write(uf.getbuffer())
-        st.success(f"Saved {len(uploaded_files)} files to {DATA_DIR}")
+    # The uploader keeps its files across reruns, so only save ones not saved yet
+    if "saved_uploads" not in st.session_state:
+        st.session_state.saved_uploads = set()
+    new_uploads = [
+        uf for uf in uploaded_files or []
+        if (uf.name, uf.size) not in st.session_state.saved_uploads
+    ]
+    for uf in new_uploads:
+        file_path = os.path.join(DATA_DIR, os.path.basename(uf.name))
+        with open(file_path, "wb") as f:
+            f.write(uf.getbuffer())
+        st.session_state.saved_uploads.add((uf.name, uf.size))
+    if new_uploads:
+        st.success(f"Saved {len(new_uploads)} files to {DATA_DIR}")
         
     st.subheader("Google Drive")
     has_gdrive_creds = os.path.exists(GDRIVE_CREDENTIALS_PATH)
@@ -41,9 +49,11 @@ with st.sidebar:
             docs = []
             # Local docs
             try:
-                local_docs = ingest_local_files()
+                local_docs, local_errors = ingest_local_files()
                 docs.extend(local_docs)
                 st.write(f"Loaded {len(local_docs)} local documents.")
+                for err in local_errors:
+                    st.warning(f"Failed to load {err}")
             except Exception as e:
                 st.error(f"Error loading local files: {e}")
             
@@ -57,8 +67,11 @@ with st.sidebar:
                     st.error(f"Error loading GDrive files: {e}")
             
             if docs:
-                chunk_and_store(docs)
-                st.success("Ingestion complete! ChromaDB updated.")
+                try:
+                    added = chunk_and_store(docs)
+                    st.success(f"Ingestion complete! Added {added} new chunks to ChromaDB.")
+                except Exception as e:
+                    st.error(f"Error storing documents in ChromaDB: {e}")
             else:
                 st.warning("No documents found to ingest.")
 

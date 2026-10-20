@@ -27,6 +27,7 @@ chroma.sqlite3
 data/
 *.pdf
 *.txt
+!requirements.txt
 *.csv
 
 
