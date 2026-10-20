@@ -7,8 +7,11 @@ warnings.filterwarnings("ignore", category=FutureWarning, module="google.*")
 
 import streamlit as st
 from ingest import ingest_local_files, ingest_gdrive, chunk_and_store
-from rag import answer_question
-from config import DATA_DIR, GDRIVE_CREDENTIALS_PATH
+from rag import retrieve, stream_answer, source_label
+from config import (
+    DATA_DIR, GDRIVE_CREDENTIALS_PATH, OLLAMA_MODEL_NAME, LLM_TEMPERATURE,
+    RETRIEVAL_K, MAX_HISTORY_MESSAGES
+)
 
 st.set_page_config(page_title="RAG System", page_icon="🤖", layout="wide")
 
@@ -76,7 +79,29 @@ with st.sidebar:
                 st.warning("No documents found to ingest.")
 
 
-st.header("2. Chat with your Documents")
+with st.sidebar:
+    st.header("2. Chat Settings")
+    llm_model = st.text_input("Ollama model", value=OLLAMA_MODEL_NAME,
+                              help="Any model you've pulled with `ollama pull`.")
+    temperature = st.slider("Temperature", 0.0, 1.0, LLM_TEMPERATURE, 0.05)
+    k = st.slider("Passages to retrieve (k)", 1, 20, RETRIEVAL_K)
+    if st.button("Clear chat"):
+        st.session_state.messages = []
+
+
+def render_sources(sources, search_query=None):
+    """Shows the retrieved passages behind an answer, numbered to match its citations."""
+    if not sources:
+        return
+    with st.expander(f"Sources ({len(sources)})"):
+        if search_query:
+            st.caption(f"Searched for: {search_query}")
+        for i, src in enumerate(sources, start=1):
+            st.markdown(f"**[{i}] {src['label']}**")
+            st.text(src["content"])
+
+
+st.header("3. Chat with your Documents")
 
 # Initialize chat history
 if "messages" not in st.session_state:
@@ -86,18 +111,33 @@ if "messages" not in st.session_state:
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+        render_sources(message.get("sources"), message.get("search_query"))
 
 # React to user input
 if prompt := st.chat_input("Ask a question about your documents:"):
+    history = st.session_state.messages[-MAX_HISTORY_MESSAGES:] if MAX_HISTORY_MESSAGES else []
     # Display user message in chat message container
     st.chat_message("user").markdown(prompt)
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": prompt})
 
-    with st.spinner("Thinking..."):
-        response = answer_question(prompt)
-        # Display assistant response in chat message container
-        with st.chat_message("assistant"):
-            st.markdown(response)
-        # Add assistant response to chat history
-        st.session_state.messages.append({"role": "assistant", "content": response})
+    with st.chat_message("assistant"):
+        try:
+            with st.spinner("Searching documents..."):
+                search_query, docs = retrieve(prompt, history, model=llm_model, k=k)
+            response = st.write_stream(
+                stream_answer(prompt, docs, history, model=llm_model, temperature=temperature)
+            )
+        except Exception as e:
+            response = (f"Error connecting to LLM or retrieving context. Make sure Ollama is running "
+                        f"and the model is pulled (`ollama pull {llm_model}`). Details: {e}")
+            st.error(response)
+            docs, search_query = [], None
+        sources = [{"label": source_label(d), "content": d.page_content} for d in docs]
+        shown_query = search_query if search_query and search_query != prompt else None
+        render_sources(sources, shown_query)
+    # Add assistant response to chat history
+    st.session_state.messages.append({
+        "role": "assistant", "content": response,
+        "sources": sources, "search_query": shown_query,
+    })

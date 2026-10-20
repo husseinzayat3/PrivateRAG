@@ -11,8 +11,11 @@
 
 ## ✨ Key Features
 - **Hybrid Data Ingestion**: Seamlessly ingest `.pdf`, `.txt`, `.md`, and `.csv` files from your local filesystem OR fetch entire directories directly from **Google Drive API**.
-- **Privacy First**: Uses [Ollama](https://ollama.com/) to run Large Language Models (like Llama 3) entirely locally.
-- **Local Embeddings**: Implements HuggingFace's `all-MiniLM-L6-v2` for blazing-fast, local vector embeddings without expensive API calls.
+- **Privacy First**: Uses [Ollama](https://ollama.com/) to run Large Language Models (like Llama 3.1) entirely locally.
+- **Local Embeddings**: Uses `BAAI/bge-small-en-v1.5` via HuggingFace (or any Ollama embedding model, e.g. `nomic-embed-text`) for local vector embeddings without expensive API calls.
+- **Cited Answers**: Answers cite their sources (`[1]`, `[2]`, …), and the retrieved passages with file and page are shown under each answer.
+- **Conversational**: Follow-up questions like "tell me more about that" are rewritten using the chat history before retrieval.
+- **Streaming**: Answers stream token by token.
 - **Persistent Vector Store**: Uses [ChromaDB](https://www.trychroma.com/) for efficient, persistent local vector storage.
 - **Interactive UI**: Built on [Streamlit](https://streamlit.io/) for a smooth, intuitive chat and document upload experience.
 
@@ -23,13 +26,14 @@ graph TD
     A[Local Files] -->|PyPDF/TextLoader| C(Text Splitter)
     B[Google Drive] -->|GoogleDriveLoader| C
     C -->|RecursiveTextSplitter| D[HuggingFace Embeddings]
-    D -->|all-MiniLM-L6-v2| E[(ChromaDB)]
-    
-    F[User Query] --> G[Retriever]
+    D -->|bge-small-en-v1.5| E[(ChromaDB)]
+
+    F[User Query] -->|+ chat history| Q[Question Rewriter]
+    Q --> G[Retriever]
     G -->|Similarity Search| E
     E -->|Context| H[Ollama Local LLM]
     F --> H
-    H -->|Llama 3| I[Streamlit Chat UI]
+    H -->|Llama 3.1| I[Streamlit Chat UI]
 ```
 
 ## 🚀 Getting Started
@@ -47,10 +51,31 @@ pip install -r requirements.txt
 ```
 
 ### 3. Setup Local LLM
-Ensure Ollama is running in the background with the `llama3` model:
+Ensure Ollama is running in the background and pull the `llama3.1` model:
 ```bash
-ollama run llama3
+ollama pull llama3.1
 ```
+
+### 3b. Configuration (Optional)
+All settings have sensible defaults. To change them, copy `.env.example` to `.env` and edit it:
+```bash
+cp .env.example .env
+```
+
+| Setting | Default | Description |
+|---|---|---|
+| `OLLAMA_MODEL_NAME` | `llama3.1` | Any model pulled with `ollama pull` |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
+| `LLM_TEMPERATURE` | `0.2` | Answer randomness |
+| `EMBEDDING_PROVIDER` | `huggingface` | `huggingface` or `ollama` |
+| `EMBEDDING_MODEL_NAME` | `BAAI/bge-small-en-v1.5` | Embedding model (e.g. `nomic-embed-text` with `ollama`) |
+| `CHUNK_SIZE` / `CHUNK_OVERLAP` | `1000` / `200` | Text splitting |
+| `RETRIEVAL_K` | `6` | Passages retrieved per question |
+| `MAX_HISTORY_MESSAGES` | `6` | Chat messages used to understand follow-ups |
+
+The model, temperature and `k` can also be changed live in the sidebar.
+
+> **Note:** Each embedding model gets its own collection in ChromaDB, so after changing `EMBEDDING_PROVIDER` or `EMBEDDING_MODEL_NAME`, click **Ingest Documents** again to index your files with the new model.
 
 ### 4. Google Drive Configuration (Optional)
 To enable Google Drive integration, you need an **OAuth 2.0 Client ID** configured as a **Desktop app**:
@@ -75,7 +100,7 @@ To enable Google Drive integration, you need an **OAuth 2.0 Client ID** configur
 - Click **Download JSON** on the resulting pop-up.
 - Rename that downloaded file to `credentials.json` and place it in the root folder of this project (next to `app.py`).
 
-On your first Google Drive ingestion run, a browser window will open asking you to authenticate. Once authenticated, a `token.json` file will be created automatically.
+On your first Google Drive ingestion run, a browser window will open asking you to authenticate. Once authenticated, a `token.json` file will be created automatically. If an existing `token.json` was issued for a different scope, you will be asked to authenticate again.
 
 ### 5. Run the Application
 Launch the Streamlit interface:

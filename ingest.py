@@ -2,9 +2,9 @@ import hashlib
 import os
 from config import (
     DATA_DIR, CHROMA_DB_DIR, CHUNK_SIZE, CHUNK_OVERLAP,
-    GDRIVE_CREDENTIALS_PATH, GDRIVE_TOKEN_PATH
+    GDRIVE_CREDENTIALS_PATH, GDRIVE_TOKEN_PATH, GDRIVE_SCOPES
 )
-from langchain_community.document_loaders import PyPDFLoader, TextLoader
+from langchain_community.document_loaders import CSVLoader, PyPDFLoader, TextLoader
 from langchain_google_community import GoogleDriveLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from vectorstore import get_vectorstore
@@ -27,7 +27,10 @@ def ingest_local_files():
             try:
                 if file.lower().endswith('.pdf'):
                     loader = PyPDFLoader(file_path)
-                elif file.lower().endswith(('.txt', '.md', '.csv')):
+                elif file.lower().endswith('.csv'):
+                    # One document per row, as "column: value" lines
+                    loader = CSVLoader(file_path, autodetect_encoding=True)
+                elif file.lower().endswith(('.txt', '.md')):
                     loader = TextLoader(file_path, autodetect_encoding=True)
                 else:
                     print(f"Skipping unsupported file type: {file}")
@@ -38,6 +41,35 @@ def ingest_local_files():
                 errors.append(f"{file}: {e}")
     return documents, errors
 
+def get_gdrive_credentials():
+    """Returns OAuth credentials for Google Drive, opening a browser
+    consent window when there is no valid token.json."""
+    from google.auth.exceptions import RefreshError
+    from google.auth.transport.requests import Request
+    from google.oauth2.credentials import Credentials
+    from google_auth_oauthlib.flow import InstalledAppFlow
+
+    creds = None
+    if os.path.exists(GDRIVE_TOKEN_PATH):
+        creds = Credentials.from_authorized_user_file(GDRIVE_TOKEN_PATH)
+        # A token issued for other scopes (e.g. drive.file) can't read the folder
+        if not creds.has_scopes(GDRIVE_SCOPES):
+            creds = None
+    if creds and creds.valid:
+        return creds
+
+    if creds and creds.expired and creds.refresh_token:
+        try:
+            creds.refresh(Request())
+        except RefreshError:
+            creds = None
+    if not creds or not creds.valid:
+        flow = InstalledAppFlow.from_client_secrets_file(GDRIVE_CREDENTIALS_PATH, GDRIVE_SCOPES)
+        creds = flow.run_local_server(port=0)
+    with open(GDRIVE_TOKEN_PATH, "w") as token:
+        token.write(creds.to_json())
+    return creds
+
 def ingest_gdrive(folder_id=None, document_ids=None):
     """Loads files from Google Drive."""
     if not os.path.exists(GDRIVE_CREDENTIALS_PATH):
@@ -45,11 +77,15 @@ def ingest_gdrive(folder_id=None, document_ids=None):
         return []
         
     print("Loading files from Google Drive...")
+    # Passing credentials directly bypasses the loader's own auth logic, which
+    # otherwise needs GOOGLE_APPLICATION_CREDENTIALS set to use the OAuth flow
     loader = GoogleDriveLoader(
         folder_id=folder_id,
         document_ids=document_ids,
+        credentials=get_gdrive_credentials(),
         credentials_path=GDRIVE_CREDENTIALS_PATH,
         token_path=GDRIVE_TOKEN_PATH,
+        scopes=GDRIVE_SCOPES,
         recursive=False
     )
     documents = loader.load()
@@ -60,6 +96,7 @@ def chunk_id(chunk):
     key = "|".join([
         str(chunk.metadata.get("source", "")),
         str(chunk.metadata.get("page", "")),
+        str(chunk.metadata.get("row", "")),
         chunk.page_content,
     ])
     return hashlib.sha256(key.encode("utf-8")).hexdigest()
