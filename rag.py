@@ -1,11 +1,13 @@
 import os
 from functools import cache
-from config import OLLAMA_MODEL_NAME, OLLAMA_BASE_URL, LLM_TEMPERATURE, RETRIEVAL_K
-from vectorstore import get_vectorstore
-from langchain_ollama import ChatOllama
+
 from langchain_core.messages import AIMessage, HumanMessage
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_ollama import ChatOllama
+
+from config import LLM_TEMPERATURE, OLLAMA_BASE_URL, OLLAMA_MODEL_NAME, RETRIEVAL_K
+from vectorstore import get_vectorstore
 
 CONDENSE_SYSTEM_PROMPT = """Given a chat history and the user's latest question, rewrite the question \
 as a standalone question that can be understood without the chat history. \
@@ -14,15 +16,18 @@ Do NOT answer the question. If it is already standalone, return it unchanged. \
 Return only the rewritten question, with no preamble."""
 
 ANSWER_SYSTEM_PROMPT = """You are a highly intelligent and helpful expert assistant.
-Your task is to answer the user's question accurately and comprehensively based ONLY on the numbered context passages provided with the question.
+Your task is to answer the user's question accurately and comprehensively \
+based ONLY on the numbered context passages provided with the question.
 
 Instructions:
 - Analyze the context carefully before answering.
 - Provide a detailed and well-structured response.
 - Use Markdown formatting (like bullet points, bold text, or code blocks) to make your answer easy to read.
 - If the context contains multiple perspectives or steps, synthesize them clearly.
-- Cite the passages you use with their numbers in square brackets, e.g. [1] or [2][3], right after the statement they support.
-- If the answer is not contained in the context, politely state that you do not have enough information to answer, and do not make up facts."""
+- Cite the passages you use with their numbers in square brackets, e.g. [1] or [2][3], \
+right after the statement they support.
+- If the answer is not contained in the context, politely state that you do not have enough \
+information to answer, and do not make up facts."""
 
 ANSWER_USER_PROMPT = """Context:
 {context}

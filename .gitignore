@@ -9,6 +9,8 @@ venv.bak/
 
 # Python
 __pycache__/
+.pytest_cache/
+.ruff_cache/
 *.py[cod]
 *$py.class
 *.so
@@ -27,7 +29,7 @@ chroma.sqlite3
 data/
 *.pdf
 *.txt
-!requirements.txt
+!requirements*.txt
 *.csv
 
 

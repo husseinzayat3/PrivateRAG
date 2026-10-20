@@ -1,12 +1,19 @@
 import hashlib
 import os
-from config import (
-    DATA_DIR, CHROMA_DB_DIR, CHUNK_SIZE, CHUNK_OVERLAP,
-    GDRIVE_CREDENTIALS_PATH, GDRIVE_TOKEN_PATH, GDRIVE_SCOPES
-)
+
 from langchain_community.document_loaders import CSVLoader, PyPDFLoader, TextLoader
 from langchain_google_community import GoogleDriveLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+from config import (
+    CHROMA_DB_DIR,
+    CHUNK_OVERLAP,
+    CHUNK_SIZE,
+    DATA_DIR,
+    GDRIVE_CREDENTIALS_PATH,
+    GDRIVE_SCOPES,
+    GDRIVE_TOKEN_PATH,
+)
 from vectorstore import get_vectorstore
 
 # Max IDs per Chroma get/add call, to stay under Chroma's batch size limit

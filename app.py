@@ -6,12 +6,17 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 warnings.filterwarnings("ignore", category=FutureWarning, module="google.*")
 
 import streamlit as st
-from ingest import ingest_local_files, ingest_gdrive, chunk_and_store
-from rag import retrieve, stream_answer, source_label
+
 from config import (
-    DATA_DIR, GDRIVE_CREDENTIALS_PATH, OLLAMA_MODEL_NAME, LLM_TEMPERATURE,
-    RETRIEVAL_K, MAX_HISTORY_MESSAGES
+    DATA_DIR,
+    GDRIVE_CREDENTIALS_PATH,
+    LLM_TEMPERATURE,
+    MAX_HISTORY_MESSAGES,
+    OLLAMA_MODEL_NAME,
+    RETRIEVAL_K,
 )
+from ingest import chunk_and_store, ingest_gdrive, ingest_local_files
+from rag import retrieve, source_label, stream_answer
 
 st.set_page_config(page_title="RAG System", page_icon="🤖", layout="wide")
 

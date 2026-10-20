@@ -1,7 +1,10 @@
 import re
 from functools import cache
-from config import CHROMA_DB_DIR, EMBEDDING_PROVIDER, EMBEDDING_MODEL_NAME, OLLAMA_BASE_URL
+
 from langchain_chroma import Chroma
+
+from config import CHROMA_DB_DIR, EMBEDDING_MODEL_NAME, EMBEDDING_PROVIDER, OLLAMA_BASE_URL
+
 
 # Cached so the embedding model and Chroma client are loaded once per process
 # and shared between ingestion and retrieval.

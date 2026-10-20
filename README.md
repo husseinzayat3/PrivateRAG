@@ -4,8 +4,11 @@
 [![LangChain](https://img.shields.io/badge/LangChain-⚡-green)](https://langchain.com/)
 [![Ollama](https://img.shields.io/badge/Ollama-🦙-orange)](https://ollama.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI](https://github.com/husseinzayat3/PrivateRAG/actions/workflows/ci.yml/badge.svg)](https://github.com/husseinzayat3/PrivateRAG/actions/workflows/ci.yml)
 
 **PrivateRAG** is a fully open-source, generic Retrieval-Augmented Generation (RAG) architecture that allows you to chat with your local documents and Google Drive folders securely. By leveraging local LLMs through Ollama, this system guarantees 100% data privacy—your documents never leave your machine during the inference process.
+
+![PrivateRAG answering a question with cited sources](docs/screenshot.png)
 
 ---
 
@@ -108,9 +111,18 @@ Launch the Streamlit interface:
 streamlit run app.py
 ```
 
+## 🧪 Development
+Install the dev tools, then run the linter and tests:
+```bash
+pip install -r requirements-dev.txt
+ruff check .
+pytest
+```
+The tests use fake embeddings and a temporary ChromaDB, so they don't need Ollama or a model download. Both checks run on every push and pull request via [GitHub Actions](.github/workflows/ci.yml).
+
 ## 👨‍💻 About the Author
 Built by **Hussein Zayat** - Senior .NET / AI Engineer.
-Connect with me on [LinkedIn](#) or check out my other projects on [GitHub](https://github.com/husseinzayat3).
+Connect with me on [LinkedIn](https://www.linkedin.com/in/hussein-zayat-6730b6161) or check out my other projects on [GitHub](https://github.com/husseinzayat3).
 
 ## 📄 License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
