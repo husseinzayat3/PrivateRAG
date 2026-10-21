@@ -1,0 +1,60 @@
+# One-command start: `docker compose up`, then open http://localhost:8501
+#
+# Put documents in ./data (or upload them in the app). The index, chat history and the
+# downloaded embedding model are kept in the `storage` volume; models pulled by Ollama
+# are kept in the `ollama` volume.
+#
+# NVIDIA GPU: docker compose -f docker-compose.yml -f docker-compose.gpu.yml up
+
+name: privaterag
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  # Pulls the chat model on first boot (several GB for llama3.1), then exits.
+  # Skips the download when the model is already there, so restarts work offline.
+  ollama-init:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      MODEL: ${OLLAMA_MODEL_NAME:-llama3.1}
+    entrypoint: ["sh", "-c", "ollama show \"$$MODEL\" > /dev/null 2>&1 || ollama pull \"$$MODEL\""]
+    restart: "no"
+
+  app:
+    build: .
+    ports:
+      - "8501:8501"
+    # Optional settings from .env (see .env.example)
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+      # The paths below point at the volumes, whatever .env says
+      DATA_DIR: /app/data
+      CHROMA_DB_DIR: /app/storage/chroma_db
+      CHAT_DB_PATH: /app/storage/chat_history.db
+    volumes:
+      - ./data:/app/data
+      - storage:/app/storage
+    depends_on:
+      ollama-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  ollama:
+  storage:

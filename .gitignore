@@ -25,8 +25,15 @@ client_secrets.json
 chroma_db/
 chroma.sqlite3
 
-# Data
-data/
+# Chat history
+chat_history.db
+
+# Local planning notes
+OPEN_SOURCE_ROADMAP.md
+
+# Data (the folder itself is kept so Docker can bind-mount it)
+data/*
+!data/.gitkeep
 *.pdf
 *.txt
 !requirements*.txt
@@ -40,5 +47,5 @@ data/
 *.swp
 *.swo
 
-# Streamlit
-.streamlit/
+# Streamlit (config.toml is committed; secrets are not)
+.streamlit/secrets.toml

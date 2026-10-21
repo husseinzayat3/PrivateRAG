@@ -1,0 +1,26 @@
+# Keep secrets, local data and caches out of the image
+.env
+credentials.json
+token.json
+client_secrets.json
+.credentials/
+data/
+chroma_db/
+chat_history.db
+storage/
+
+.git/
+.github/
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.idea/
+.vscode/
+.DS_Store
+docs/
+tests/
+OPEN_SOURCE_ROADMAP.md
