@@ -1,9 +1,12 @@
-import hashlib
+import csv
 import os
+import shutil
+from typing import NamedTuple
 
-from langchain_community.document_loaders import CSVLoader, PyPDFLoader, TextLoader
+from langchain_core.documents import Document
 from langchain_google_community import GoogleDriveLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from pypdf import PdfReader
 
 from config import (
     CHROMA_DB_DIR,
@@ -13,11 +16,70 @@ from config import (
     GDRIVE_CREDENTIALS_PATH,
     GDRIVE_SCOPES,
     GDRIVE_TOKEN_PATH,
+    SAMPLES_DIR,
 )
-from vectorstore import get_vectorstore
+from vectorstore import BATCH_SIZE, chunk_id, delete_chunks, get_vectorstore, ids_for_sources, mark_changed
 
-# Max IDs per Chroma get/add call, to stay under Chroma's batch size limit
-BATCH_SIZE = 1000
+# Tried in order when reading text files; latin-1 accepts any byte sequence
+TEXT_ENCODINGS = ("utf-8-sig", "cp1252", "latin-1")
+
+
+class IngestResult(NamedTuple):
+    added: int  # new chunks embedded and stored
+    removed: int  # outdated chunks of changed documents
+
+
+def read_text(path):
+    """Reads a text file, trying common encodings."""
+    with open(path, "rb") as f:
+        data = f.read()
+    for encoding in TEXT_ENCODINGS:
+        try:
+            return data.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+
+def load_text(path):
+    return [Document(page_content=read_text(path), metadata={"source": path})]
+
+def load_pdf(path_or_file, source=None):
+    """One document per page; `page` is 0-based, `page_label` is the printed page number."""
+    reader = PdfReader(path_or_file)
+    labels = reader.page_labels
+    meta = {"source": source} if source else {}
+    return [
+        Document(
+            page_content=page.extract_text(),
+            metadata={**meta, "page": i, "page_label": labels[i], "total_pages": len(reader.pages)},
+        )
+        for i, page in enumerate(reader.pages)
+    ]
+
+class DrivePdfLoader:
+    """Reads PDFs downloaded by GoogleDriveLoader, which then sets their source and title."""
+
+    def __init__(self, file):
+        self.file = file
+
+    def load(self):
+        return load_pdf(self.file)
+
+def load_csv(path):
+    """One document per row, as "column: value" lines."""
+    reader = csv.DictReader(read_text(path).splitlines())
+    docs = []
+    for i, row in enumerate(reader):
+        lines = []
+        for column, value in row.items():
+            # Cells beyond the header row end up in a list under the None column
+            if isinstance(value, list):
+                value = ",".join(v.strip() for v in value)
+            lines.append(f"{column.strip() if column is not None else column}: "
+                         f"{value.strip() if isinstance(value, str) else value}")
+        docs.append(Document(page_content="\n".join(lines), metadata={"source": path, "row": i}))
+    return docs
+
+LOADERS = {".pdf": lambda path: load_pdf(path, source=path), ".csv": load_csv, ".txt": load_text, ".md": load_text}
 
 def ingest_local_files():
     """Loads local files from the data directory.
@@ -31,22 +93,32 @@ def ingest_local_files():
     for root, _, files in os.walk(DATA_DIR):
         for file in files:
             file_path = os.path.join(root, file)
-            try:
-                if file.lower().endswith('.pdf'):
-                    loader = PyPDFLoader(file_path)
-                elif file.lower().endswith('.csv'):
-                    # One document per row, as "column: value" lines
-                    loader = CSVLoader(file_path, autodetect_encoding=True)
-                elif file.lower().endswith(('.txt', '.md')):
-                    loader = TextLoader(file_path, autodetect_encoding=True)
-                else:
+            loader = LOADERS.get(os.path.splitext(file)[1].lower())
+            if loader is None:
+                if file != ".gitkeep":
                     print(f"Skipping unsupported file type: {file}")
-                    continue
-                documents.extend(loader.load())
+                continue
+            try:
+                documents.extend(loader(file_path))
             except Exception as e:
                 print(f"Error loading {file}: {e}")
                 errors.append(f"{file}: {e}")
     return documents, errors
+
+def copy_samples():
+    """Copies the sample documents into the data directory.
+
+    Returns the number of files copied; files already there are left alone.
+    """
+    copied = 0
+    for name in sorted(os.listdir(SAMPLES_DIR)):
+        target = os.path.join(DATA_DIR, name)
+        # samples/README.md describes the samples and isn't one of them
+        if name == "README.md" or not name.endswith(".md") or os.path.exists(target):
+            continue
+        shutil.copyfile(os.path.join(SAMPLES_DIR, name), target)
+        copied += 1
+    return copied
 
 def get_gdrive_credentials():
     """Returns OAuth credentials for Google Drive, opening a browser
@@ -93,30 +165,24 @@ def ingest_gdrive(folder_id=None, document_ids=None):
         credentials_path=GDRIVE_CREDENTIALS_PATH,
         token_path=GDRIVE_TOKEN_PATH,
         scopes=GDRIVE_SCOPES,
+        # Google Docs, Sheets and Slides are exported as text; other files (only
+        # PDFs, given file_types) go through file_loader_cls
+        file_types=["document", "sheet", "presentation", "pdf"] if folder_id else None,
+        file_loader_cls=DrivePdfLoader,
         recursive=False
     )
     documents = loader.load()
     return documents
 
-def chunk_id(chunk):
-    """Stable ID for a chunk so re-ingesting the same content is a no-op."""
-    key = "|".join([
-        str(chunk.metadata.get("source", "")),
-        str(chunk.metadata.get("page", "")),
-        str(chunk.metadata.get("row", "")),
-        chunk.page_content,
-    ])
-    return hashlib.sha256(key.encode("utf-8")).hexdigest()
-
 def chunk_and_store(documents):
     """Splits documents and stores chunks not already in ChromaDB.
 
-    Returns the number of newly added chunks.
+    Documents are always loaded whole, so any chunk of the same source that isn't
+    in the new set is from an older version of the file and is removed.
     """
     if not documents:
         print("No documents to store.")
-        return 0
-
+        return IngestResult(0, 0)
 
     print(f"Splitting {len(documents)} documents...")
     text_splitter = RecursiveCharacterTextSplitter(
@@ -125,22 +191,23 @@ def chunk_and_store(documents):
     )
     chunks = text_splitter.split_documents(documents)
 
-    # Dedupe within this batch, then skip chunks already in the store
+    # Dedupe within this batch, then compare with what's indexed for the same sources
     unique = {chunk_id(c): c for c in chunks}
-    ids = list(unique)
-    vectorstore = get_vectorstore()
-    existing = set()
-    for i in range(0, len(ids), BATCH_SIZE):
-        existing.update(vectorstore.get(ids=ids[i:i + BATCH_SIZE], include=[])["ids"])
-    new_ids = [i for i in ids if i not in existing]
+    existing = set(ids_for_sources({str(d.metadata.get("source", "")) for d in documents}))
+    new_ids = [i for i in unique if i not in existing]
+    outdated = existing - unique.keys()
 
-    print(f"Storing {len(new_ids)} new chunks in ChromaDB at {CHROMA_DB_DIR} "
-          f"({len(existing)} already indexed)...")
+    print(f"Storing {len(new_ids)} new chunks in ChromaDB at {CHROMA_DB_DIR}, removing "
+          f"{len(outdated)} outdated ({len(existing) - len(outdated)} unchanged)...")
+    delete_chunks(outdated)
+    vectorstore = get_vectorstore()
     for i in range(0, len(new_ids), BATCH_SIZE):
         batch = new_ids[i:i + BATCH_SIZE]
         vectorstore.add_documents([unique[id_] for id_ in batch], ids=batch)
+    if new_ids:
+        mark_changed()
     print("Ingestion complete.")
-    return len(new_ids)
+    return IngestResult(len(new_ids), len(outdated))
 
 def main(use_local=True, gdrive_folder_id=None):
     docs = []
