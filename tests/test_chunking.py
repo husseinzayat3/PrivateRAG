@@ -48,7 +48,7 @@ def test_chunk_id_ignores_unrelated_metadata():
 # --- Chunking and storing ---
 
 def test_splits_long_documents_into_bounded_chunks(store):
-    added = chunk_and_store([long_doc()])
+    added = chunk_and_store([long_doc()]).added
 
     assert added > 1
     contents = store.get(include=["documents"])["documents"]
@@ -57,10 +57,10 @@ def test_splits_long_documents_into_bounded_chunks(store):
 
 
 def test_reingesting_same_documents_adds_nothing(store):
-    first = chunk_and_store([long_doc()])
+    first = chunk_and_store([long_doc()]).added
     ids_after_first = stored_ids(store)
 
-    second = chunk_and_store([long_doc()])
+    second = chunk_and_store([long_doc()]).added
 
     assert first > 0
     assert second == 0
@@ -70,7 +70,7 @@ def test_reingesting_same_documents_adds_nothing(store):
 def test_duplicate_documents_in_one_batch_are_stored_once(store):
     doc = Document(page_content="short doc", metadata={"source": "a.txt"})
 
-    added = chunk_and_store([doc, doc])
+    added = chunk_and_store([doc, doc]).added
 
     assert added == 1
     assert len(stored_ids(store)) == 1
@@ -82,7 +82,7 @@ def test_only_new_content_is_added(store):
     added = chunk_and_store([
         Document(page_content="original", metadata={"source": "a.txt"}),
         Document(page_content="new doc", metadata={"source": "b.txt"}),
-    ])
+    ]).added
 
     assert added == 1
     assert len(stored_ids(store)) == 2
@@ -97,5 +97,35 @@ def test_stored_ids_match_chunk_ids(store):
 
 
 def test_empty_input_stores_nothing(store):
-    assert chunk_and_store([]) == 0
+    assert chunk_and_store([]) == (0, 0)
+    assert stored_ids(store) == set()
+
+
+def test_edited_document_replaces_its_old_chunks(store):
+    chunk_and_store([Document(page_content="old version", metadata={"source": "a.txt"})])
+    chunk_and_store([Document(page_content="other file", metadata={"source": "b.txt"})])
+
+    result = chunk_and_store([Document(page_content="new version", metadata={"source": "a.txt"})])
+
+    assert result == (1, 1)
+    assert sorted(store.get(include=["documents"])["documents"]) == ["new version", "other file"]
+
+
+def test_only_changed_pages_are_replaced(store):
+    pages = [Document(page_content=f"page {i}", metadata={"source": "r.pdf", "page": i}) for i in range(3)]
+    chunk_and_store(pages)
+
+    pages[1] = Document(page_content="page 1, revised", metadata={"source": "r.pdf", "page": 1})
+    result = chunk_and_store(pages)
+
+    assert result == (1, 1)
+    assert sorted(store.get(include=["documents"])["documents"]) == ["page 0", "page 1, revised", "page 2"]
+
+
+def test_emptied_document_removes_its_chunks(store):
+    chunk_and_store([Document(page_content="some text", metadata={"source": "a.txt"})])
+
+    result = chunk_and_store([Document(page_content="", metadata={"source": "a.txt"})])
+
+    assert result == (0, 1)
     assert stored_ids(store) == set()

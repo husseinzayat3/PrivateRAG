@@ -1,4 +1,3 @@
-import os
 from functools import cache
 
 from langchain_core.messages import AIMessage, HumanMessage
@@ -6,8 +5,18 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_ollama import ChatOllama
 
-from config import LLM_TEMPERATURE, OLLAMA_BASE_URL, OLLAMA_MODEL_NAME, RETRIEVAL_K
-from vectorstore import get_vectorstore
+from config import (
+    LLM_TEMPERATURE,
+    OLLAMA_BASE_URL,
+    OLLAMA_KEEP_ALIVE,
+    OLLAMA_MODEL_NAME,
+    OLLAMA_NUM_CTX,
+    RETRIEVAL_K,
+    RETRIEVAL_MODE,
+    USE_RERANKER,
+)
+from retrieval import get_reranker, search
+from vectorstore import document_name, get_embeddings
 
 CONDENSE_SYSTEM_PROMPT = """Given a chat history and the user's latest question, rewrite the question \
 as a standalone question that can be understood without the chat history. \
@@ -50,7 +59,31 @@ answer_prompt = ChatPromptTemplate.from_messages([
 # rebuild clients on every question
 @cache
 def get_llm(model=OLLAMA_MODEL_NAME, temperature=LLM_TEMPERATURE):
-    return ChatOllama(model=model, base_url=OLLAMA_BASE_URL, temperature=temperature)
+    return ChatOllama(
+        model=model,
+        base_url=OLLAMA_BASE_URL,
+        temperature=temperature,
+        num_ctx=OLLAMA_NUM_CTX,
+        keep_alive=OLLAMA_KEEP_ALIVE,
+    )
+
+def warm_up(model=OLLAMA_MODEL_NAME, use_reranker=USE_RERANKER):
+    """Loads the embedding model, the reranker (if used) and the Ollama model into memory,
+    so the first question doesn't wait for them. Failures are ignored; they surface when asking."""
+    try:
+        get_embeddings()
+        if use_reranker:
+            get_reranker()
+    except Exception as e:
+        print(f"Embedding/reranker warm-up failed: {e}")
+    try:
+        from ollama import Client
+        # An empty prompt just loads the model; num_ctx must match get_llm's or Ollama reloads it
+        Client(host=OLLAMA_BASE_URL).generate(
+            model=model, prompt="", keep_alive=OLLAMA_KEEP_ALIVE, options={"num_ctx": OLLAMA_NUM_CTX}
+        )
+    except Exception as e:
+        print(f"Ollama warm-up for {model!r} failed: {e}")
 
 def to_messages(history):
     """Converts [{"role": ..., "content": ...}] chat history to LangChain messages."""
@@ -62,7 +95,7 @@ def to_messages(history):
 def source_label(doc):
     """Human-readable source, e.g. 'report.pdf, p. 3' or 'data.csv, row 12'."""
     meta = doc.metadata
-    name = meta.get("title") or os.path.basename(str(meta.get("source", "unknown")))
+    name = document_name(meta)
     if "page_label" in meta:
         return f"{name}, p. {meta['page_label']}"
     if "page" in meta:
@@ -85,12 +118,12 @@ def condense_question(question, history, model=OLLAMA_MODEL_NAME):
     rewritten = chain.invoke({"history": to_messages(history), "question": question})
     return rewritten.strip().strip('"') or question
 
-def retrieve(question, history=(), model=OLLAMA_MODEL_NAME, k=RETRIEVAL_K):
+def retrieve(question, history=(), model=OLLAMA_MODEL_NAME, k=RETRIEVAL_K,
+             mode=RETRIEVAL_MODE, use_reranker=USE_RERANKER):
     """Returns (search_query, docs) for the question, using the chat history
     to resolve follow-ups."""
     search_query = condense_question(question, list(history), model)
-    docs = get_vectorstore().similarity_search(search_query, k=k)
-    return search_query, docs
+    return search_query, search(search_query, k, mode, use_reranker)
 
 def stream_answer(question, docs, history=(), model=OLLAMA_MODEL_NAME, temperature=LLM_TEMPERATURE):
     """Yields the answer token by token."""

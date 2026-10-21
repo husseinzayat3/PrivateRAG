@@ -3,6 +3,8 @@ from langchain_chroma import Chroma
 from langchain_core.embeddings import DeterministicFakeEmbedding
 
 import ingest
+import retrieval
+import vectorstore
 
 
 @pytest.fixture
@@ -17,13 +19,16 @@ def data_dir(tmp_path, monkeypatch):
 @pytest.fixture
 def store(tmp_path, monkeypatch):
     """A throwaway Chroma store with fake embeddings, so tests don't download a model."""
-    vectorstore = Chroma(
+    store = Chroma(
         collection_name="test",
         persist_directory=str(tmp_path / "chroma"),
         embedding_function=DeterministicFakeEmbedding(size=32),
     )
-    monkeypatch.setattr(ingest, "get_vectorstore", lambda: vectorstore)
-    return vectorstore
+    monkeypatch.setattr(ingest, "get_vectorstore", lambda: store)
+    monkeypatch.setattr(vectorstore, "get_vectorstore", lambda: store)
+    # Don't reuse a keyword index built for another test's store
+    monkeypatch.setattr(retrieval, "_bm25", (None, None))
+    return store
 
 
 def make_pdf(path, pages):
