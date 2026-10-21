@@ -1,13 +1,11 @@
 streamlit==1.66.0
 langchain==1.4.6
-langchain-community==0.4.2
 langchain-chroma==1.1.0
 langchain-huggingface==1.2.3
 langchain-google-community[drive]==5.1.1
 chromadb==1.5.9
 sentence-transformers==6.1.0
 pypdf==6.21.1
-unstructured==0.27.30
 google-api-python-client==2.201.0
 google-auth-httplib2==0.4.4
 google-auth-oauthlib==1.5.0
