@@ -1,0 +1,54 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please check [Troubleshooting](https://github.com/husseinzayat3/PrivateRAG/blob/main/docs/TROUBLESHOOTING.md) first, since many setup problems are covered there.
+        **Don't paste content from private documents** into this issue.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Upload a .pdf with ...
+        2. Click Ingest Documents
+        3. Ask ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error message or logs
+      description: From the app or the terminal running `streamlit run app.py` / `docker compose up`.
+      render: text
+  - type: dropdown
+    id: install
+    attributes:
+      label: How are you running PrivateRAG?
+      options:
+        - Docker Compose
+        - Python (pip install -r requirements.txt)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: PrivateRAG version or commit
+      placeholder: v0.1.0 or a commit hash
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python version, Ollama version and model, embedding model
+      placeholder: macOS 15 (M2), Python 3.12, Ollama 0.12, llama3.1, bge-small-en-v1.5
+    validations:
+      required: true

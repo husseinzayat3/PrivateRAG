@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Troubleshooting guide
+    url: https://github.com/husseinzayat3/PrivateRAG/blob/main/docs/TROUBLESHOOTING.md
+    about: Answers to common setup and performance problems
+  - name: Report a security vulnerability
+    url: https://github.com/husseinzayat3/PrivateRAG/security/advisories/new
+    about: Please report security issues privately, not as public issues
