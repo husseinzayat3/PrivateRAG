@@ -2,6 +2,10 @@ import os
 
 from dotenv import load_dotenv
 
+# Release version (semver). Bump it together with CHANGELOG.md; the release
+# workflow checks that a pushed tag v<VERSION> matches.
+VERSION = "0.1.0"
+
 # Suppress HuggingFace tokenizers warning
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 

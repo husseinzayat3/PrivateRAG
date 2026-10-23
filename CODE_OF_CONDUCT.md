@@ -8,8 +8,7 @@ issues, pull requests, discussions or any other project space.
 
 ## Reporting
 
-If you experience or witness unacceptable behaviour, please contact the maintainer,
-[@husseinzayat3](https://github.com/husseinzayat3), privately. Reports are handled
-confidentially. The maintainer may remove, edit or reject comments, commits, code and issues
+If you experience or witness unacceptable behaviour, please email the maintainer at
+**husseinzayat10@hotmail.com**. Reports are handled confidentially. The maintainer may remove, edit or reject comments, commits, code and issues
 that don't follow this Code of Conduct, and may ban contributors temporarily or permanently,
 following the enforcement guidelines of the Contributor Covenant.

@@ -4,6 +4,7 @@
   - ["Error connecting to LLM or retrieving context"](#error-connecting-to-llm-or-retrieving-context)
   - ["model not found" / the model isn't pulled](#model-not-found--the-model-isnt-pulled)
   - [Docker: the app waits forever on first start](#docker-the-app-waits-forever-on-first-start)
+  - [Docker: "denied" warning when pulling the app image](#docker-denied-warning-when-pulling-the-app-image)
   - [Port 8501 is already in use](#port-8501-is-already-in-use)
 - [Performance](#performance)
   - [The first answer takes a long time to start](#the-first-answer-takes-a-long-time-to-start)
@@ -62,6 +63,17 @@ docker compose logs -f ollama-init
 
 The first question also downloads the embedding model (about 130 MB). Both are kept in Docker
 volumes, so later starts are fast and work offline.
+
+### Docker: "denied" warning when pulling the app image
+
+`docker compose up` first tries to pull the prebuilt image from GitHub Container Registry,
+and builds it from source if the pull fails (for example before the first release, or for a
+version that was never published). The warning is harmless; the build takes a few minutes the
+first time.
+
+To use your own code changes, run `docker compose up --build`. To update to the newest
+release, run `docker compose pull`. To stay on a specific release, set
+`PRIVATERAG_VERSION=0.1.0` in `.env`.
 
 ### Port 8501 is already in use
 
@@ -161,7 +173,7 @@ That's expected. You created the OAuth app yourself, and it's in testing mode. C
 read-only access to your own Drive.
 
 If you see **"Access blocked"** instead, add your Google account as a **test user** on the
-OAuth consent screen (see the README).
+OAuth consent screen (see [Google Drive setup](GOOGLE_DRIVE.md#2-configure-the-oauth-consent-screen)).
 
 ### Using Google Drive with Docker
 

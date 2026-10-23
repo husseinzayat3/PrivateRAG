@@ -5,12 +5,16 @@
 # are kept in the `ollama` volume.
 #
 # NVIDIA GPU: docker compose -f docker-compose.yml -f docker-compose.gpu.yml up
+#
+# The app image is pulled from GitHub Container Registry (built from source if it
+# can't be pulled). After changing the code, run `docker compose up --build`.
+# Update to the newest release with `docker compose pull`.
 
 name: privaterag
 
 services:
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.40.5
     volumes:
       - ollama:/root/.ollama
     healthcheck:
@@ -23,7 +27,7 @@ services:
   # Pulls the chat model on first boot (several GB for llama3.1), then exits.
   # Skips the download when the model is already there, so restarts work offline.
   ollama-init:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.40.5
     depends_on:
       ollama:
         condition: service_healthy
@@ -34,6 +38,7 @@ services:
     restart: "no"
 
   app:
+    image: ghcr.io/husseinzayat3/privaterag:${PRIVATERAG_VERSION:-latest}
     build: .
     ports:
       - "8501:8501"

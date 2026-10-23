@@ -18,15 +18,17 @@ from config import (
     RETRIEVAL_K,
     RETRIEVAL_MODE,
     USE_RERANKER,
+    VERSION,
 )
-from ingest import chunk_and_store, copy_samples, ingest_gdrive, ingest_local_files
+from ingest import LOADERS, chunk_and_store, copy_samples, ingest_gdrive, ingest_local_files
 from rag import retrieve, source_label, stream_answer, warm_up
 from retrieval import MODES
 from vectorstore import delete_documents, list_documents, reset_index
 
-st.set_page_config(page_title="RAG System", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="PrivateRAG", page_icon="📚", layout="wide")
 
-st.title("Generic RAG System (Local + Google Drive)")
+st.title("📚 PrivateRAG")
+st.caption("Chat with your documents, privately. Answers come from your files, with citations.")
 
 
 @st.cache_resource(show_spinner=False)
@@ -138,7 +140,11 @@ with st.sidebar:
     st.header("Ingestion Settings")
 
     st.subheader("Local Files")
-    uploaded_files = st.file_uploader("Upload files to local directory", accept_multiple_files=True)
+    # The size limit is server.maxUploadSize in .streamlit/config.toml
+    uploaded_files = st.file_uploader(
+        "Upload files to local directory", accept_multiple_files=True,
+        type=[ext.lstrip(".") for ext in LOADERS],
+    )
     # The uploader keeps its files across reruns, so only save ones not saved yet
     if "saved_uploads" not in st.session_state:
         st.session_state.saved_uploads = set()
@@ -221,6 +227,10 @@ with st.sidebar:
         help="Reorders the retrieved passages with a cross-encoder model for better relevance. "
              "Downloads the model on first use and adds a little time per question.",
     )
+
+    st.divider()
+    st.caption(f"PrivateRAG v{VERSION} · [GitHub](https://github.com/husseinzayat3/PrivateRAG) · "
+               "[Troubleshooting](https://github.com/husseinzayat3/PrivateRAG/blob/main/docs/TROUBLESHOOTING.md)")
 
 start_warm_up(llm_model, use_reranker)
 

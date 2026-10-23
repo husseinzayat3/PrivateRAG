@@ -18,6 +18,9 @@ release notes unless you'd rather not be.
 
 PrivateRAG is designed to run on your own machine, for a single user.
 
+- **Uploads** are limited to the supported types (`.pdf`, `.txt`, `.md`, `.csv`) and
+  50 MB per file (`server.maxUploadSize` in `.streamlit/config.toml`). File names are reduced
+  to their base name, so uploads can't be written outside the data folder.
 - **No authentication.** The web UI has no login. Don't expose port 8501 to the internet or
   an untrusted network without putting authentication in front of it (for example a reverse
   proxy with single sign-on).

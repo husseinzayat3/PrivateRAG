@@ -24,7 +24,8 @@ Run the app with `streamlit run app.py`.
 
 ## Checks
 
-Both run in CI on every pull request, on Python 3.10–3.13:
+Both run in CI on every pull request, on Python 3.10–3.14. CI also builds the Docker image
+and checks that the app starts in it.
 
 ```bash
 ruff check .        # lint (add --fix to fix import order etc.)
@@ -32,8 +33,12 @@ pytest              # tests
 ```
 
 The tests use fake embeddings and a temporary ChromaDB, so they don't need Ollama, a GPU or a
-model download, and they run in about a second. Please add tests for new behaviour where
+model download, and they run in seconds. `tests/test_app.py` runs the real Streamlit script
+with Streamlit's `AppTest`, with the LLM faked. Please add tests for new behaviour where
 practical. See `tests/conftest.py` for the `data_dir` and `store` fixtures.
+
+New to the code? [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) explains how it fits together
+and where to make common changes.
 
 ## Code layout
 
@@ -55,6 +60,16 @@ practical. See `tests/conftest.py` for the `data_dir` and `store` fixtures.
 4. Make sure `ruff check .` and `pytest` pass, then open a pull request and fill in the template.
 
 Keep pull requests focused: one fix or feature per PR is much easier to review.
+
+## Releasing (maintainers)
+
+1. Update `VERSION` in `config.py`, and in `CHANGELOG.md` rename **Unreleased** to the new
+   version with today's date (`## [0.2.0] - 2026-12-01`), plus a new empty **Unreleased**
+   section and an updated compare link at the bottom.
+2. Commit, then tag and push: `git tag -a v0.2.0 -m "v0.2.0" && git push origin v0.2.0`.
+3. The [release workflow](.github/workflows/release.yml) checks the version and changelog,
+   publishes the Docker image to `ghcr.io/husseinzayat3/privaterag` (amd64 and arm64), and
+   creates the GitHub Release with the changelog section as its notes.
 
 ## Reporting bugs and security issues
 

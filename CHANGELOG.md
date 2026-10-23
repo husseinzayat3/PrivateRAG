@@ -32,10 +32,14 @@ First public release.
 - Settings through environment variables or a `.env` file, including the storage paths
   `DATA_DIR`, `CHROMA_DB_DIR`, `CHAT_DB_PATH`, `GDRIVE_CREDENTIALS_PATH` and `GDRIVE_TOKEN_PATH`.
 - One-command start with Docker Compose (app + Ollama, model pulled on first boot),
-  with an optional NVIDIA GPU override.
+  with an optional NVIDIA GPU override. The app image is published to
+  `ghcr.io/husseinzayat3/privaterag` for amd64 and arm64 with each release.
 - Sample documents and an **Add sample documents** button for trying the app without your own files.
-- Troubleshooting guide, contributing guide, code of conduct, security policy, and issue/PR templates.
-- CI with ruff and pytest on Python 3.10–3.13, and Dependabot updates.
+- The version is shown at the bottom of the sidebar.
+- Documentation: architecture guide, Google Drive setup guide, troubleshooting guide,
+  contributing guide, code of conduct, security policy, and issue/PR templates.
+- CI with ruff and pytest on Python 3.10–3.14, app smoke tests, and a Docker build check;
+  a release workflow; Dependabot updates.
 
 ### Changed
 
@@ -51,6 +55,7 @@ First public release.
 ### Security
 
 - Usage telemetry from Streamlit, Chroma and Hugging Face Hub is turned off.
+- Uploads are limited to supported file types and 50 MB per file.
 
 [Unreleased]: https://github.com/husseinzayat3/PrivateRAG/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/husseinzayat3/PrivateRAG/releases/tag/v0.1.0

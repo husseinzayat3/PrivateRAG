@@ -1,3 +1,8 @@
 [browser]
 # Streamlit sends anonymous usage statistics by default
 gatherUsageStats = false
+
+[server]
+# Largest file that can be uploaded, in MB (Streamlit's default is 200).
+# Override with the STREAMLIT_SERVER_MAX_UPLOAD_SIZE environment variable.
+maxUploadSize = 50

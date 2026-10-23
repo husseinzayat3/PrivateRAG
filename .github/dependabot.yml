@@ -19,3 +19,9 @@ updates:
     directory: /
     schedule:
       interval: monthly
+
+  # The Ollama image pinned in docker-compose.yml
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: monthly

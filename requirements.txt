@@ -1,13 +1,20 @@
-streamlit==1.66.0
+# Every package the code imports directly is pinned here, rather than relied
+# on as a dependency of another package
+streamlit==1.66.0; python_version >= "3.11"
+# Last release supporting Python 3.10
+streamlit==1.65.0; python_version < "3.11"
 langchain==1.4.6
+langchain-core==1.6.12
+langchain-text-splitters==1.1.3
 langchain-chroma==1.1.0
 langchain-huggingface==1.2.3
 langchain-google-community[drive]==5.1.1
+langchain-ollama==1.1.0
+ollama==0.6.3
 chromadb==1.5.9
 sentence-transformers==6.1.0
 pypdf==6.21.1
 google-api-python-client==2.201.0
 google-auth-httplib2==0.4.4
 google-auth-oauthlib==1.5.0
-langchain-ollama==1.1.0
 python-dotenv==1.2.4
