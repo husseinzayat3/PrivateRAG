@@ -32,7 +32,8 @@ First public release.
 - Settings through environment variables or a `.env` file, including the storage paths
   `DATA_DIR`, `CHROMA_DB_DIR`, `CHAT_DB_PATH`, `GDRIVE_CREDENTIALS_PATH` and `GDRIVE_TOKEN_PATH`.
 - One-command start with Docker Compose (app + Ollama, model pulled on first boot),
-  with an optional NVIDIA GPU override. The app image is published to
+  with an optional NVIDIA GPU override, and a `docker-compose.native-ollama.yml` override that
+  uses Ollama installed on the host (much faster on macOS, where Docker can't use the GPU). The app image is published to
   `ghcr.io/husseinzayat3/privaterag` for amd64 and arm64 with each release.
 - Sample documents and an **Add sample documents** button for trying the app without your own files.
 - The version is shown at the bottom of the sidebar.
@@ -51,6 +52,8 @@ First public release.
 
 - PDFs in Google Drive folders failed to load, because the Drive loader needed `PyPDF2`,
   which wasn't installed. They are now read with `pypdf`.
+- Streamlit's file watcher is turned off, which stops ~100 "No module named 'torchvision'"
+  errors per rerun in the logs.
 
 ### Security
 

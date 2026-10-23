@@ -20,7 +20,10 @@ source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt -r requirements-dev.txt
 ```
 
-Run the app with `streamlit run app.py`.
+Run the app with `streamlit run app.py`. Code reloading is off by default (see
+`.streamlit/config.toml`); to reload on save while developing, run
+`streamlit run app.py --server.fileWatcherType auto`. In that mode Streamlit logs harmless
+"No module named 'torchvision'" errors after the embedding model loads.
 
 ## Checks
 

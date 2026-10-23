@@ -38,7 +38,7 @@ Then open **http://localhost:8501**. The first start downloads the chat model (a
 
 - **Your documents:** put files in `./data`, or upload them in the sidebar.
 - **NVIDIA GPU:** `docker compose -f docker-compose.yml -f docker-compose.gpu.yml up`
-- **Mac:** Docker can't use the Apple GPU. For faster answers, [run Ollama natively](docs/TROUBLESHOOTING.md#which-hardware-do-i-need) or use the Python install below.
+- **Mac:** Docker can't use the Apple GPU, so the bundled Ollama is very slow. Install [Ollama for macOS](https://ollama.com/download), run `ollama pull llama3.1`, then start with `docker compose -f docker-compose.yml -f docker-compose.native-ollama.yml up`. On an M1 Pro that's about 30× faster ([details](docs/TROUBLESHOOTING.md#which-hardware-do-i-need)).
 - **Smaller machine:** set `OLLAMA_MODEL_NAME=llama3.2:3b` in `.env`.
 - **Updating:** `docker compose pull`, then `docker compose up`.
 

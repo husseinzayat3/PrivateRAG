@@ -4,6 +4,7 @@
   - ["Error connecting to LLM or retrieving context"](#error-connecting-to-llm-or-retrieving-context)
   - ["model not found" / the model isn't pulled](#model-not-found--the-model-isnt-pulled)
   - [Docker: the app waits forever on first start](#docker-the-app-waits-forever-on-first-start)
+  - [Docker: `ModuleNotFoundError` after updating](#docker-modulenotfounderror-after-updating)
   - [Docker: "denied" warning when pulling the app image](#docker-denied-warning-when-pulling-the-app-image)
   - [Port 8501 is already in use](#port-8501-is-already-in-use)
 - [Performance](#performance)
@@ -64,6 +65,17 @@ docker compose logs -f ollama-init
 The first question also downloads the embedding model (about 130 MB). Both are kept in Docker
 volumes, so later starts are fast and work offline.
 
+### Docker: `ModuleNotFoundError` after updating
+
+Docker Compose reuses an app image that already exists, so after pulling new code (with
+`git pull`) the container can still run the old image, with old dependencies. Rebuild it:
+
+```bash
+docker compose up --build
+```
+
+Your documents, index, chat history and Ollama models are kept.
+
 ### Docker: "denied" warning when pulling the app image
 
 `docker compose up` first tries to pull the prebuilt image from GitHub Container Registry,
@@ -100,19 +112,25 @@ preloads them in the background at startup.
 
 | Hardware | What to expect |
 |---|---|
-| **Apple Silicon (M1 or later)** | Runs well with native Ollama, which uses the GPU through Metal. Docker on macOS **can't** use the GPU, so for speed run Ollama natively (see below). |
+| **Apple Silicon (M1 or later)** | Runs well with native Ollama, which uses the GPU through Metal. Docker on macOS **can't** use the GPU: on an M1 Pro, `llama3.1` writes about 18 tokens/s natively but under 1 token/s in the bundled container. Use native Ollama (see below). |
 | **NVIDIA GPU** | Fast. Native Ollama uses CUDA automatically. With Docker, install the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) and start with `docker compose -f docker-compose.yml -f docker-compose.gpu.yml up`. |
 | **CPU only** | Works, but expect 10–60 seconds before an answer starts with `llama3.1` (8B). Use a 1–3B model (`llama3.2:3b`, `qwen2.5:1.5b`) and a lower k. |
 
 As a rule of thumb, an 8B model needs about 8 GB of free RAM (or VRAM).
 
-**Docker app with native Ollama** (e.g. on a Mac): start only the app container and point it at
-Ollama on the host. Edit `OLLAMA_BASE_URL` under `app` in `docker-compose.yml` to
-`http://host.docker.internal:11434`, then run:
+**Docker app with native Ollama** (recommended on a Mac): install
+[Ollama](https://ollama.com/download) on your computer, pull the model, and start the app with
+the `docker-compose.native-ollama.yml` override. It points the app at Ollama on your computer
+and doesn't start the bundled Ollama container:
 
 ```bash
-docker compose up --no-deps app
+ollama pull llama3.1
+docker compose -f docker-compose.yml -f docker-compose.native-ollama.yml up
 ```
+
+To make this the default, add `COMPOSE_FILE=docker-compose.yml:docker-compose.native-ollama.yml`
+to `.env`; then plain `docker compose up` uses it. To free the disk space used by the bundled
+model, run `docker volume rm privaterag_ollama`.
 
 ## Answers and the index
 

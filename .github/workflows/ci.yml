@@ -55,6 +55,7 @@ jobs:
         run: |
           docker compose config --quiet
           docker compose -f docker-compose.yml -f docker-compose.gpu.yml config --quiet
+          docker compose -f docker-compose.yml -f docker-compose.native-ollama.yml config --quiet
       # Catches dependencies missing from requirements.txt, which the health check can't see
       - name: Import the app's modules
         run: docker run --rm privaterag:ci python -c "import chat_store, ingest, rag, retrieval, vectorstore"

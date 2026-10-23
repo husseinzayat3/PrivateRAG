@@ -5,6 +5,8 @@
 # are kept in the `ollama` volume.
 #
 # NVIDIA GPU: docker compose -f docker-compose.yml -f docker-compose.gpu.yml up
+# macOS:      use Ollama installed on your Mac (Docker can't use the Apple GPU):
+#             docker compose -f docker-compose.yml -f docker-compose.native-ollama.yml up
 #
 # The app image is pulled from GitHub Container Registry (built from source if it
 # can't be pulled). After changing the code, run `docker compose up --build`.

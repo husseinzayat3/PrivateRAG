@@ -1,0 +1,24 @@
+# Uses Ollama installed on your computer instead of the bundled Ollama container.
+# Recommended on macOS: Docker can't use the Apple GPU, so the bundled container runs
+# on the CPU only. On an M1 Pro, native Ollama writes answers about 30x faster.
+#
+#   ollama pull llama3.1
+#   docker compose -f docker-compose.yml -f docker-compose.native-ollama.yml up
+#
+# To make this the default, add this line to .env and just run `docker compose up`:
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.native-ollama.yml
+
+services:
+  # Only started when asked for with --profile bundled-ollama
+  ollama:
+    profiles: [bundled-ollama]
+  ollama-init:
+    profiles: [bundled-ollama]
+
+  app:
+    environment:
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+    depends_on: !reset {}
+    # Docker Desktop (macOS, Windows) provides host.docker.internal; this adds it on Linux
+    extra_hosts:
+      - host.docker.internal:host-gateway
