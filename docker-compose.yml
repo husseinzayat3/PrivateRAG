@@ -14,7 +14,7 @@ name: privaterag
 
 services:
   ollama:
-    image: ollama/ollama:0.40.5
+    image: ollama/ollama:0.40.6
     volumes:
       - ollama:/root/.ollama
     healthcheck:
@@ -27,7 +27,7 @@ services:
   # Pulls the chat model on first boot (several GB for llama3.1), then exits.
   # Skips the download when the model is already there, so restarts work offline.
   ollama-init:
-    image: ollama/ollama:0.40.5
+    image: ollama/ollama:0.40.6
     depends_on:
       ollama:
         condition: service_healthy
