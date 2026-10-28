@@ -1,6 +1,6 @@
 # Every package the code imports directly is pinned here, rather than relied
 # on as a dependency of another package
-streamlit==1.66.0; python_version >= "3.11"
+streamlit==1.66.1; python_version >= "3.11"
 # Last release supporting Python 3.10
 streamlit==1.65.0; python_version < "3.11"
 langchain==1.4.6
